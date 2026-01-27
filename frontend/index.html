@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Scan - RAG-Based CV Parser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .upload-section {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+        }
+
+        .upload-section input {
+            display: none;
+        }
+
+        .upload-section p {
+            color: #666;
+            margin: 10px 0;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+        }
+
+        .btn-secondary {
+            background: #764ba2;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            margin: 10px 0;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .candidates-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .candidate-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 8px 0;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .candidate-item:hover {
+            background: #e9ecef;
+        }
+
+        .candidate-item.selected {
+            background: #e9ecef;
+            border-left-color: #764ba2;
+        }
+        
+        .candidate-item-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .candidate-name {
+            flex: 1;
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            padding: 5px 10px;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+        
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
+        .results-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+
+        .answer-box {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #28a745;
+        }
+
+        .sources-list {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .source-item {
+            padding: 8px;
+            background: #f8f9fa;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📄 CV Scan</h1>
+            <p>RAG-Based CV Parser & Query System</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="card">
+                <h2>Upload CV</h2>
+                
+                <div class="upload-section" id="uploadArea">
+                    <p>📁 Drag & drop your CV here</p>
+                    <p>or click to browse</p>
+                    <p style="font-size: 0.9em; color: #999;">Supported: PDF, DOCX (Max 50MB)</p>
+                    <input type="file" id="fileInput" accept=".pdf,.docx" />
+                </div>
+
+                <input type="text" id="candidateName" placeholder="Candidate Name (optional)" />
+
+                <button class="btn btn-primary" id="uploadBtn">Upload CV</button>
+
+                <div class="status" id="uploadStatus"></div>
+                <div class="loading" id="uploadLoading">
+                    <div class="spinner"></div>
+                    <p>Processing CV...</p>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3 style="color: #667eea; margin-bottom: 10px;">Uploaded Candidates</h3>
+                    <div class="candidates-list" id="candidatesList">
+                        <p style="color: #999; text-align: center;">No candidates yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Query Section -->
+            <div class="card">
+                <h2>Ask Questions</h2>
+
+                <textarea id="questionInput" placeholder="Ask a question about the CVs..." rows="4"></textarea>
+
+                <button class="btn btn-primary" id="queryBtn">Search & Answer</button>
+
+                <div class="status" id="queryStatus"></div>
+                <div class="loading" id="queryLoading">
+                    <div class="spinner"></div>
+                    <p>Processing your question...</p>
+                </div>
+
+                <div class="results-section" id="resultsSection" style="display: none; margin-top: 15px;">
+                    <div class="answer-box" id="answerBox"></div>
+
+                    <div class="sources-list">
+                        <h4 style="color: #667eea; margin-bottom: 10px;">Sources</h4>
+                        <div id="sourcesList"></div>
+                    </div>
+
+                    <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                        <strong>Confidence:</strong> <span id="confidenceLevel"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="card">
+            <h2>System Status</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <div style="font-size: 1.5em; color: #667eea; font-weight: bold;" id="totalCandidates">0</div>
+                    <div style="color: #666;">Total Candidates</div>
+                </div>
+                <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                    <div style="font-size: 1.5em; color: #667eea; font-weight: bold;" id="apiStatus">✓</div>
+                    <div style="color: #666;">API Status</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
